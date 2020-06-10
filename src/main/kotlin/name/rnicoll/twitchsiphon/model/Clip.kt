@@ -19,10 +19,14 @@ class Clip(
     var videoId: Int,
     @JsonProperty("game_id")
     var gameId: Int,
+    @JsonProperty("language")
     var language: String,
+    @JsonProperty("title")
     var title: String,
     @JsonProperty("view_count")
     var viewCount: Int,
+    @JsonProperty("created_at")
     var createdAt: String,
+    @JsonProperty("thumbnail_url")
     var thumbnailUrl: String
 )
