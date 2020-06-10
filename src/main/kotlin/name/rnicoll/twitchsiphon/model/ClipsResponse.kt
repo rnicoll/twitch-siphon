@@ -1,4 +1,6 @@
 package name.rnicoll.twitchsiphon.model
 
-class ClipsResponse {
-}
+data class ClipsResponse(
+    val data: List<Clip>,
+    val pagination: Pagination? = null
+)

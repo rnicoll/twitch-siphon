@@ -1,14 +1,13 @@
 package name.rnicoll.twitchsiphon
 
-import com.fasterxml.jackson.core.JsonPointer
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import name.rnicoll.twitchsiphon.model.Clip
+import name.rnicoll.twitchsiphon.model.ClipsResponse
 import org.apache.http.client.methods.HttpGet
 import org.apache.http.impl.client.CloseableHttpClient
 import org.apache.http.impl.client.HttpClients
 import java.io.Closeable
-import java.net.URI
 import java.net.URL
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
@@ -24,9 +23,6 @@ class TwitchClient(
         private const val HEADER_CLIENT_ID = "Client-ID"
         private const val URL_AUTHORIZE = "https://id.twitch.tv/oauth2/authorize"
         private const val URL_CLIPS = "https://api.twitch.tv/helix/clips"
-        private val pointerClipId = JsonPointer.compile("/id")
-        private val pointerData = JsonPointer.compile("/data")
-        private val pointerCursor = JsonPointer.compile("/pagination/cursor")
         private val rfcDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
 
         fun authorize(clientId: String, scope: String): URL = StringBuilder(URL_AUTHORIZE)
@@ -76,27 +72,10 @@ class TwitchClient(
             }.run {
                 httpClient.execute(this)
             }
-            val jtok = objectMapper.readTree(res.entity.content)
-            cursor = jtok.at(pointerCursor).asText()
-            val newClips: List<Clip> = jtok.at(pointerData).require<JsonNode>().map { clip ->
-                println(objectMapper.writeValueAsString(clip))
-                val slug = clip.at(pointerClipId).asText()
-                val title = clip.at("/title").asText()
-                val creatorName = clip.at("/creator_name").asText()
-                val createdAt = clip.at("/created_at").asText()
-                val viewCount = clip.at("/view_count").textValue()
-                val thumbnailUrl = URI(clip.at("/thumbnail_url").textValue())
-                Clip(
-                    slug,
-                    title,
-                    creatorName,
-                    createdAt,
-                    viewCount,
-                    thumbnailUrl
-                )
-            }
-            readCount = newClips.size
-            newClips.forEach { clips.add(it) }
+            val clipsResult: ClipsResponse = objectMapper.readValue(res.entity.content, ClipsResponse::class.java)
+            cursor = clipsResult.pagination?.cursor
+            readCount = clipsResult.data.size
+            clipsResult.data.forEach { clips.add(it) }
         } while (readCount > 0 && (cursor?.length ?: 0) > 0)
         return clips
     }

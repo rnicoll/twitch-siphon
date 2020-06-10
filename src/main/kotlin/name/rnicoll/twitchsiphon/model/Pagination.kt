@@ -1,4 +1,3 @@
 package name.rnicoll.twitchsiphon.model
 
-class Pagination {
-}
+data class Pagination(val cursor: String)

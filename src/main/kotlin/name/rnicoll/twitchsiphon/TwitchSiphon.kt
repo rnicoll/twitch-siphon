@@ -13,6 +13,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.io.*
 import java.net.URI
+import java.net.URL
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.text.SimpleDateFormat
@@ -54,19 +55,20 @@ class TwitchSiphon(
         private const val TIMEOUT = 5 // Seconds
 
         fun guessDownloadUrl(clip: Clip): URI {
-            return if (clip.thumbnailUrl.path.contains("AT-cm")) {
-                clip.thumbnailUrl.path
+            val thumbnailUrl = URL(clip.thumbnailUrl)
+            return if (thumbnailUrl.path.contains("AT-cm")) {
+                thumbnailUrl.path
                     .split("-")
                     .subList(0, 2)
                     .joinToString("-")
                     .plus(".mp4")
             } else {
-                clip.thumbnailUrl.path
+                thumbnailUrl.path
                     .split("-preview-")
                     .first()
                     .plus(".mp4")
             }.let { filename ->
-                clip.thumbnailUrl.resolve(filename)
+                URL(thumbnailUrl, filename).toURI()
             }
         }
     }
@@ -119,11 +121,11 @@ class TwitchSiphon(
     }
 
     fun downloadAll(clip: Clip, folder: Path) {
-        val imageFile = folder.resolve("${clip.slug}.jpg").toFile()
-        val jsonFile = folder.resolve("${clip.slug}.json").toFile()
+        val imageFile = folder.resolve("${clip.id}.jpg").toFile()
+        val jsonFile = folder.resolve("${clip.id}.json").toFile()
         try {
             if (jsonFile.exists()) {
-                logger.info("Skipping ${clip.slug} because $jsonFile exists")
+                logger.info("Skipping ${clip.id} because $jsonFile exists")
             } else {
                 try {
                     downloadPreview(clip, imageFile)
@@ -133,12 +135,12 @@ class TwitchSiphon(
                 try {
                     downloadClip(clip, folder, jsonFile)
                 } catch (ex: DownloadException) {
-                    logger.info("Could not download ${ex.url} for ${clip.slug} based on ${clip.thumbnailUrl}")
-                    logger.error("Could not download ${ex.url} for ${clip.slug} based on ${clip.thumbnailUrl}")
+                    logger.info("Could not download ${ex.url} for ${clip.id} based on ${clip.thumbnailUrl}")
+                    logger.error("Could not download ${ex.url} for ${clip.id} based on ${clip.thumbnailUrl}")
                 }
             }
         } catch (ex: IOException) {
-            logger.info("Error downloading clip ${clip.slug}")
+            logger.info("Error downloading clip ${clip.id}")
             if (jsonFile.exists()) {
                 jsonFile.delete()
             }
@@ -147,8 +149,8 @@ class TwitchSiphon(
 
     fun downloadClip(clip: Clip, folder: Path, jsonFile: File) {
         val downloadUrl: URI = guessDownloadUrl(clip)
-        logger.info("Downloading $downloadUrl for ${clip.slug}")
-        val videoFile = folder.resolve("${clip.slug}.mp4").toFile()
+        logger.info("Downloading $downloadUrl for ${clip.id}")
+        val videoFile = folder.resolve("${clip.id}.mp4").toFile()
         val res = HttpGet(downloadUrl)
             .run {
                 config = requestConfig
@@ -165,8 +167,9 @@ class TwitchSiphon(
     }
 
     fun downloadPreview(clip: Clip, imageFile: File) {
-        logger.info("Downloading ${clip.thumbnailUrl} for ${clip.slug}")
-        val res = HttpGet(clip.thumbnailUrl.toString())
+        logger.info("Downloading ${clip.thumbnailUrl} for ${clip.id}")
+        val thumbnailUrl = URL(clip.thumbnailUrl).toURI()
+        val res = HttpGet(thumbnailUrl)
             .run {
                 config = requestConfig
                 httpClient.execute(this)
@@ -176,7 +179,7 @@ class TwitchSiphon(
                 res.entity.writeTo(outputStream)
             }
         } else {
-            throw DownloadException(clip.thumbnailUrl)
+            throw DownloadException(thumbnailUrl)
         }
     }
 }

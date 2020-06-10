@@ -2,7 +2,7 @@ package name.rnicoll.twitchsiphon.model
 
 import com.fasterxml.jackson.annotation.JsonProperty
 
-class ClipJson(
+class Clip(
     var id: String,
     var url: String,
     @JsonProperty("embed_url")
