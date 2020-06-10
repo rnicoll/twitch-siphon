@@ -79,6 +79,7 @@ class TwitchClient(
             val jtok = objectMapper.readTree(res.entity.content)
             cursor = jtok.at(pointerCursor).asText()
             val newClips: List<Clip> = jtok.at(pointerData).require<JsonNode>().map { clip ->
+                println(objectMapper.writeValueAsString(clip))
                 val slug = clip.at(pointerClipId).asText()
                 val title = clip.at("/title").asText()
                 val creatorName = clip.at("/creator_name").asText()
